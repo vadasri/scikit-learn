@@ -835,3 +835,102 @@ class MultiLabelBinarizer(BaseEstimator, TransformerMixin):
                                  'Also got {0}'.format(unexpected))
             return [tuple(self.classes_.compress(indicators)) for indicators
                     in yt]
+
+
+class MultiColumnLabelEncoder(BaseEstimator, TransformerMixin):
+    """Encode multiple columns using LabelEncoder.
+
+    Attributes
+    ----------
+    columns: list of column names to encode.
+    label_encoders : dictionary to store the label encoder for each column.
+
+    Based on: https://stackoverflow.com/a/30267328/8738968
+
+    Examples
+    --------
+    `MultiColumnLabelEncoder` can be used to normalize labels for multiple columns.
+
+    >>> from sklearn import preprocessing
+    >>> le = preprocessing.MultiColumnLabelEncoder()
+    >>> le.fit([1, 2, 2, 6])
+
+
+    """
+    def __init__(self, columns=None):
+        self.columns = columns
+
+    def fit(self, y):
+        """Fit label encoder
+
+        Parameters
+        ----------
+        y : array-like of shape (n_samples, n_columns)
+            Target values.
+
+        Returns
+        -------
+        self : returns an instance of self.
+        """
+        self.label_encoders = {}
+        if self.columns is not None:
+            for col in self.columns:
+                le_col = LabelEncoder().fit(y[col])
+                self.label_encoders[col] = le_col
+        else:
+            for col_name, col in y.iteritems():
+                le_col = LabelEncoder().fit(y[col])
+                self.label_encoders[col] = le_col
+        return self
+
+    def transform(self, y):
+        '''
+        Transform labels of each column to normalized encoding.
+
+        Parameters
+        ----------
+        y : array-like of shape [n_samples, n_columns]
+            Target values.
+
+        Returns
+        -------
+        y : array-like of shape [n_samples, n_columns]
+
+        '''
+        check_is_fitted(self, 'label_encoders')
+
+        transformed_y = y.copy()
+        if self.columns is not None:
+            for col in self.columns:
+                le_col = self.label_encoders[col]
+                transformed_y[col] = le_col.transform(transformed_y[col])
+        else:
+            for col_name, col in transformed_y.iteritems():
+                le_col = self.label_encoders[col]
+                transformed_y[col_name] = le_col.transform(col)
+        return transformed_y
+
+    def inverse_transform(self, y):
+        """Transform labels of each column back to original encoding.
+
+        Parameters
+        ----------
+        y : numpy array of shape [n_samples, n_columns]
+            Target values.
+
+        Returns
+        -------
+        y : numpy array of shape [n_samples, n_columns]
+        """
+        check_is_fitted(self, 'label_encoders')
+
+        inverse_transformed_y = y.copy()
+        if self.columns is not None:
+            for col in self.columns:
+                le_col = self.label_encoders[col]
+                inverse_transformed_y[col] = le_col.inverse_transform(inverse_transformed_y[col])
+        else:
+            for col_name, col in inverse_transformed_y.iteritems():
+                le_col = self.label_encoders[col]
+                inverse_transformed_y[col_name] = le_col.inverse_transform(col)
+        return inverse_transformed_y
