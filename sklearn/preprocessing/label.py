@@ -33,6 +33,7 @@ __all__ = [
     'LabelBinarizer',
     'LabelEncoder',
     'MultiLabelBinarizer',
+    'MultiColumnLabelEncoder',
 ]
 
 
@@ -857,11 +858,18 @@ class MultiColumnLabelEncoder(BaseEstimator, TransformerMixin):
 
 
     """
-    def __init__(self, columns=None):
-        self.columns = columns
+    def __init__(self, column_names=None):
+        if column_names is None:
+            raise ValueError(
+                'You must pass a list of column names that correspond to the columns that need to be encoded.')
+        if type(column_names) == str:
+            self.column_names = [column_names]
+        elif type(column_names) == list:
+            self.column_names = column_names
+        self.n_columns = len(self.column_names)
 
     def fit(self, y):
-        """Fit label encoder
+        """Fit label encoder for all columns
 
         Parameters
         ----------
@@ -872,15 +880,23 @@ class MultiColumnLabelEncoder(BaseEstimator, TransformerMixin):
         -------
         self : returns an instance of self.
         """
+        if y.size == 0:
+            raise ValueError('Cannot pass an empty array.')
+        if y.ndim > 2:
+            raise ValueError('MultiColumnLabelEncoder only supports arrays of dimension 2 or less.')
+        if y.ndim == 1 and len(self.column_names) != 1:
+            raise ValueError('The array has fewer columns than the number of column names you passed.')
+        elif y.ndim == 2 and y.shape[1] != len(self.column_names):
+            raise ValueError('The array should have the same number of columns as the number of column names.')
+
         self.label_encoders = {}
-        if self.columns is not None:
-            for col in self.columns:
-                le_col = LabelEncoder().fit(y[col])
-                self.label_encoders[col] = le_col
+        print(self.n_columns)
+        if self.n_columns == 1:
+            self.label_encoders[self.column_names[0]] = LabelEncoder().fit(y)
         else:
-            for col_name, col in y.iteritems():
-                le_col = LabelEncoder().fit(y[col])
-                self.label_encoders[col] = le_col
+            for column_index, column_name in enumerate(self.column_names):
+                le_column = LabelEncoder().fit(y[:,column_index])
+                self.label_encoders[column_name] = le_column
         return self
 
     def transform(self, y):
@@ -899,15 +915,17 @@ class MultiColumnLabelEncoder(BaseEstimator, TransformerMixin):
         '''
         check_is_fitted(self, 'label_encoders')
 
-        transformed_y = y.copy()
-        if self.columns is not None:
-            for col in self.columns:
-                le_col = self.label_encoders[col]
-                transformed_y[col] = le_col.transform(transformed_y[col])
+        if y.ndim == 2 and y.shape[1] != len(self.column_names):
+            raise ValueError('The array has more columns than the number of column names you passed.')
+
+        transformed_y = np.zeros(y.shape)
+        if self.n_columns == 1:
+            le_column = self.label_encoders[self.column_names[0]]
+            transformed_y = le_column.transform(y)
         else:
-            for col_name, col in transformed_y.iteritems():
-                le_col = self.label_encoders[col]
-                transformed_y[col_name] = le_col.transform(col)
+            for column_index, column_name in enumerate(self.column_names):
+                le_column = self.label_encoders[column_name]
+                transformed_y[:, column_index] = le_column.transform(y[:, column_index])
         return transformed_y
 
     def inverse_transform(self, y):
@@ -925,8 +943,8 @@ class MultiColumnLabelEncoder(BaseEstimator, TransformerMixin):
         check_is_fitted(self, 'label_encoders')
 
         inverse_transformed_y = y.copy()
-        if self.columns is not None:
-            for col in self.columns:
+        if self.column_names is not None:
+            for col in self.column_names:
                 le_col = self.label_encoders[col]
                 inverse_transformed_y[col] = le_col.inverse_transform(inverse_transformed_y[col])
         else:

@@ -20,6 +20,7 @@ from sklearn.preprocessing.label import LabelBinarizer
 from sklearn.preprocessing.label import MultiLabelBinarizer
 from sklearn.preprocessing.label import LabelEncoder
 from sklearn.preprocessing.label import label_binarize
+from sklearn.preprocessing.label import MultiColumnLabelEncoder
 
 from sklearn.preprocessing.label import _inverse_binarize_thresholding
 from sklearn.preprocessing.label import _inverse_binarize_multiclass
@@ -528,3 +529,30 @@ def test_inverse_binarize_multiclass():
                                                    [0, 0, 0]]),
                                        np.arange(3))
     assert_array_equal(got, np.array([1, 1, 0]))
+
+
+def test_multi_column_label_encoder_column_names_missing():
+    assert_raises(ValueError, MultiColumnLabelEncoder)
+    assert_raise_message(ValueError,
+                         'You must pass a list of column names that correspond to the columns that need to be encoded.',
+                         MultiColumnLabelEncoder)
+
+
+def test_multi_column_label_encoder_empty_data_array():
+    le = MultiColumnLabelEncoder(column_names=['dummy'])
+    y = np.array([])
+    assert_raises(ValueError, le.fit, y=y)
+    assert_raise_message(ValueError,
+                         'Cannot pass an empty array.',
+                         le.fit, y=y)
+
+
+def test_multi_column_label_encoder_fit_and_transform():
+    data = np.array([['New York', 'NY'], ['Dallas', 'TX'], ['Austin', 'TX'], ['Rochester', 'NY'], ['Chicago', 'IL']])
+    le = MultiColumnLabelEncoder(column_names=['city', 'state'])
+    assert(NOTFittedle.transform(data)
+    le.fit(data)
+    assert len(le.label_encoders) == 2
+    assert_array_equal(le.label_encoders['city'].classes_, ['Austin', 'Chicago', 'Dallas', 'New York', 'Rochester'])
+    assert_array_equal(le.label_encoders['state'].classes_, ['IL', 'NY', 'TX'])
+    assert_array_equal(le.transform(data), [[3, 1], [2, 2], [0, 2], [4, 1], [1, 0]])

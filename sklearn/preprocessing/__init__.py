@@ -31,6 +31,7 @@ from .label import label_binarize
 from .label import LabelBinarizer
 from .label import LabelEncoder
 from .label import MultiLabelBinarizer
+from .label import MultiColumnLabelEncoder
 
 from ._target import TransformedTargetRegressor
 from .imputation import Imputer
@@ -44,6 +45,7 @@ __all__ = [
     'LabelBinarizer',
     'LabelEncoder',
     'MultiLabelBinarizer',
+    'MultiColumnLabelEncoder',
     'MinMaxScaler',
     'MaxAbsScaler',
     'QuantileTransformer',
